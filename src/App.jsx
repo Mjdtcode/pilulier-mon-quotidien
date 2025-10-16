@@ -1,12 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import Header from './components/Header';
-import ThemeSelector from './components/ThemeSelector';
 import Chatbot from './components/Chatbot';
 import MedForm from './components/MedForm';
 import Contacts from './components/Contacts';
 import DailyGrid from './components/DailyGrid';
 import WeeklyGrid from './components/WeeklyGrid';
-import { MOMENTS } from './constants';
 import useLocalStorage from './hooks/useLocalStorage';
 import { playReminderSound } from './utils/audio';
 import { ensureNotifPermission, notify } from './utils/notify';
@@ -23,8 +21,6 @@ export default function App() {
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [showChat, setShowChat] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
-  const [showThemeSelector, setShowThemeSelector] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useLocalStorage('pv_theme', 'from-blue-50 to-green-50');
   const [showChatbot, setShowChatbot] = useState(false);
 
   useEffect(() => { ensureNotifPermission(); }, []);
@@ -72,12 +68,12 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${backgroundColor} p-4`}>
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-surface overflow-x-hidden">
+      <div className="mx-auto w-full max-w-xl md:max-w-2xl px-4 pb-28">
         <Header
           showChatbot={showChatbot}
           setShowChatbot={setShowChatbot}
-          setShowThemeSelector={setShowThemeSelector}
+          setShowThemeSelector={() => {}}
           remindersEnabled={remindersEnabled}
           setRemindersEnabled={setRemindersEnabled}
           view={view} setView={setView}
@@ -86,16 +82,6 @@ export default function App() {
         />
 
         {showChatbot && <Chatbot open={showChatbot} onClose={() => setShowChatbot(false)} />}
-        {showThemeSelector && (
-          <ThemeSelector backgroundColor={backgroundColor} setBackgroundColor={setBackgroundColor} onClose={() => setShowThemeSelector(false)} />
-        )}
-
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6 flex justify-end">
-          <button
-            onClick={() => { setShowForm(v => !v); setEditingMed(null); }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
-          >Ajouter</button>
-        </div>
 
         {showForm && (
           <MedForm
@@ -106,17 +92,15 @@ export default function App() {
           />
         )}
 
-        {showContacts && (
-          <Contacts contacts={contacts} setContacts={setContacts} />
-        )}
+        {showContacts && <Contacts contacts={contacts} setContacts={setContacts} />}
 
         {showChat && !showContacts && (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6">
-              <h2 className="text-2xl font-bold">Connaître son médicament</h2>
-              <p className="text-blue-100">Utilisez l'assistant virtuel pour poser vos questions</p>
+          <div className="bg-card rounded-xl shadow-soft overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-ink">Connaître son médicament</h2>
+              <p className="text-sm text-mute">Utilisez l’assistant virtuel pour poser vos questions.</p>
             </div>
-            <div className="p-6 text-center text-gray-600">Ouvrez l'Assistant en bas à droite.</div>
+            <div className="p-5 text-center text-mute">Ouvrez l’Assistant en bas à droite.</div>
           </div>
         )}
 
@@ -141,6 +125,14 @@ export default function App() {
           />
         )}
       </div>
+
+      <button
+        onClick={() => { setShowForm(v => !v); setEditingMed(null); }}
+        className="fixed bottom-6 right-6 bg-brand-600 text-white w-14 h-14 rounded-full shadow-soft text-2xl"
+        aria-label="Ajouter un médicament"
+      >
+        ＋
+      </button>
     </div>
   );
 }
