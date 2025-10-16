@@ -1,0 +1,12 @@
+[functions]
+  directory = "netlify/functions"
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/anthropic-proxy"
+  to = "/.netlify/functions/anthropic-proxy"
+  status = 200
