@@ -1,9 +1,33 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command   = "npm run build"
+  publish   = "dist"
   functions = "netlify/functions"
 
+[functions]
+  node_bundler  = "esbuild"
+  included_files = ["netlify/functions/data/**"]
+
+# API locale de l’assistant
 [[redirects]]
-  from = "/api/anthropic-proxy"
-  to = "/.netlify/functions/anthropic-proxy"
+  from = "/api/local"
+  to   = "/.netlify/functions/local-assistant"
   status = 200
+
+# SPA fallback (Vite)
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+
+# En-têtes optionnels pour le service worker
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+  Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+  Service-Worker-Allowed = "/"
+
+

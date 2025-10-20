@@ -1,1 +1,2 @@
-/api/anthropic-proxy /.netlify/functions/anthropic-proxy 200
+/api/local /netlify/functions/local-assistant 200
+
