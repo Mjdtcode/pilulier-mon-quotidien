@@ -21,24 +21,34 @@ export default function App() {
   const [contacts, setContacts] = useLocalStorage('pv_contacts', {
     medecins: [],
     auxiliaires: [],
-    proches: []
+    proches: [],
   });
+
+  // handler d’ajout de contact (utilisé par <Contacts/>)
+  function addContact(type, data) {
+    setContacts((c) => ({
+      ...c,
+      [type]: [...c[type], { id: mkId(), ...data }],
+    }));
+  }
 
   // --- Patients avec pilulier séparé
   const [patients, setPatients] = useLocalStorage(LS_KEY, {
     byId: { me: { id: 'me', name: 'Moi', meds: [] } },
     order: ['me'],
-    activeId: 'me'
+    activeId: 'me',
   });
 
-  // Sauvegarde auto en localStorage
+  // Sauvegarde auto
   useEffect(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(patients)); } catch {}
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(patients));
+    } catch {}
   }, [patients]);
 
   const active = patients.byId[patients.activeId];
   const setActivePatient = (id) =>
-    setPatients(p => ({ ...p, activeId: id in p.byId ? id : 'me' }));
+    setPatients((p) => ({ ...p, activeId: id in p.byId ? id : 'me' }));
 
   // --- États UI
   const [view, setView] = useState('journalier');
@@ -48,40 +58,36 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
 
-  useEffect(() => { ensureNotifPermission(); }, []);
-  const initialForm = useMemo(() => ({
-    nom: '',
-    dosage: '',
-    moments: [],
-    jours: [],
-    notes: ''
-  }), []);
+  useEffect(() => {
+    ensureNotifPermission();
+  }, []);
+
+  const initialForm = useMemo(
+    () => ({ nom: '', dosage: '', moments: [], jours: [], notes: '' }),
+    []
+  );
 
   // --- Médicaments du patient actif
   const medications = active?.meds ?? [];
   const setMedications = (updater) => {
-    setPatients(p => {
+    setPatients((p) => {
       const cur = p.byId[p.activeId];
       const nextMeds = typeof updater === 'function' ? updater(cur.meds) : updater;
-      return {
-        ...p,
-        byId: { ...p.byId, [p.activeId]: { ...cur, meds: nextMeds } }
-      };
+      return { ...p, byId: { ...p.byId, [p.activeId]: { ...cur, meds: nextMeds } } };
     });
   };
 
   // --- Actions pilulier
   const getMedsForMoment = (moment, jour = null) =>
-    medications.filter(m =>
-      m.moments.includes(moment) &&
-      (view === 'journalier' || m.jours.includes(jour))
+    medications.filter(
+      (m) => m.moments.includes(moment) && (view === 'journalier' || m.jours.includes(jour))
     );
 
   const [takenMeds, setTakenMeds] = useLocalStorage('pv_taken', {});
   const toggleTaken = (medId, moment, jour = null) => {
     const key = jour ? `${active.id}:${medId}-${moment}-${jour}` : `${active.id}:${medId}-${moment}`;
     const now = new Date().toLocaleString('fr-FR');
-    setTakenMeds(prev => {
+    setTakenMeds((prev) => {
       const was = !!prev[key];
       const next = { ...prev, [key]: was ? null : now };
       if (!was && remindersEnabled) {
@@ -92,24 +98,32 @@ export default function App() {
     });
   };
 
-  // --- Gestion formulaire manuel
+  // --- Formulaire manuel
   const [showForm, setShowForm] = useState(false);
   const [editingMed, setEditingMed] = useState(null);
-  const editMed = (med) => { setEditingMed(med); setShowForm(true); };
-  const deleteMed = (id) => setMedications(medications.filter(m => m.id !== id));
+  const editMed = (med) => {
+    setEditingMed(med);
+    setShowForm(true);
+  };
+  const deleteMed = (id) => setMedications(medications.filter((m) => m.id !== id));
 
   const submitMed = (data) => {
     const nom = data.nom.trim();
     const dosage = data.dosage.trim();
     const momentsUniq = Array.from(new Set(data.moments));
-    if (!nom || !dosage || momentsUniq.length === 0) { alert('Champs obligatoires manquants'); return; }
-    if (view === 'semainier' && data.jours.length === 0) { alert('Sélectionnez au moins un jour'); return; }
-
+    if (!nom || !dosage || momentsUniq.length === 0) {
+      alert('Champs obligatoires manquants');
+      return;
+    }
+    if (view === 'semainier' && data.jours.length === 0) {
+      alert('Sélectionnez au moins un jour');
+      return;
+    }
     const payload = { ...data, nom, dosage, moments: momentsUniq };
     if (editingMed) {
-      setMedications(medications.map(m =>
-        m.id === editingMed.id ? { ...payload, id: editingMed.id } : m
-      ));
+      setMedications(
+        medications.map((m) => (m.id === editingMed.id ? { ...payload, id: editingMed.id } : m))
+      );
       setEditingMed(null);
     } else {
       setMedications([...medications, { ...payload, id: mkId() }]);
@@ -117,14 +131,21 @@ export default function App() {
     setShowForm(false);
   };
 
-  // --- Ajout depuis l’assistant local
-  const addMedFromAssistant = ({ nom, dosage, quantite = 1, jours = [], until, moments = ['Matin'] }) => {
+  // --- Ajout depuis l’assistant
+  const addMedFromAssistant = ({
+    nom,
+    dosage,
+    quantite = 1,
+    jours = [],
+    until,
+    moments = ['Matin'],
+  }) => {
     const base = {
       nom,
       dosage,
       moments,
       jours,
-      notes: until ? `Jusqu’au ${new Date(until).toLocaleDateString('fr-FR')}` : ''
+      notes: until ? `Jusqu’au ${new Date(until).toLocaleDateString('fr-FR')}` : '',
     };
     const items = Array.from({ length: quantite }, () => ({ ...base, id: mkId() }));
     setMedications([...medications, ...items]);
@@ -132,8 +153,8 @@ export default function App() {
 
   // --- Ouvrir pilulier d’un proche
   const openPilulierForContact = (displayName) => {
-    setPatients(p => {
-      const existingId = Object.values(p.byId).find(x => x.name === displayName)?.id;
+    setPatients((p) => {
+      const existingId = Object.values(p.byId).find((x) => x.name === displayName)?.id;
       if (existingId) return { ...p, activeId: existingId };
       const id = mkId();
       return {
@@ -146,7 +167,7 @@ export default function App() {
     setShowContactsView(false);
   };
 
-  // --- Rendu principal
+  // --- UI
   return (
     <div className="min-h-screen bg-surface overflow-x-hidden">
       <div className="mx-auto w-full max-w-xl md:max-w-2xl px-4 pb-28">
@@ -158,6 +179,7 @@ export default function App() {
           setRemindersEnabled={setRemindersEnabled}
           view={view}
           setView={setView}
+          setShowChat={setAssistantOpen}
           setShowContacts={setShowContactsView}
         />
 
@@ -167,7 +189,6 @@ export default function App() {
 
         {showThemeSelector && <ThemeSelector onClose={() => setShowThemeSelector(false)} />}
 
-        {/* Assistant local */}
         {assistantOpen && (
           <Chatbot
             key="assistant"
@@ -179,28 +200,28 @@ export default function App() {
           />
         )}
 
-        {/* Formulaire ajout manuel */}
         {showForm && (
           <MedForm
             initial={editingMed ?? initialForm}
             modeSemainier={view === 'semainier'}
             onSubmit={submitMed}
-            onCancel={() => { setShowForm(false); setEditingMed(null); }}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingMed(null);
+            }}
           />
         )}
 
-        {/* Contacts */}
         {showContactsView && (
           <Contacts
             contacts={contacts}
-            setContacts={setContacts}
+            onAddContact={addContact}
             onOpenPilulier={openPilulierForContact}
             setActivePatient={setActivePatient}
             patients={patients}
           />
         )}
 
-        {/* Vue journalière */}
         {!assistantOpen && !showContactsView && view === 'journalier' && (
           <DailyGrid
             medications={medications}
@@ -212,11 +233,10 @@ export default function App() {
           />
         )}
 
-        {/* Vue semainier */}
         {!assistantOpen && !showContactsView && view === 'semainier' && (
           <WeeklyGrid
-           activePatientId={active?.id}
-          getMedsForMoment={getMedsForMoment}
+            activePatientId={active?.id}
+            getMedsForMoment={getMedsForMoment}
             takenMeds={takenMeds}
             toggleTaken={toggleTaken}
             editMed={editMed}
@@ -235,10 +255,18 @@ export default function App() {
         📅 Calendrier
       </button>
 
-      <CalendarModal open={showCalendar} onClose={() => setShowCalendar(false)} selected={[]} onSelect={() => {}} />
+      <CalendarModal
+        open={showCalendar}
+        onClose={() => setShowCalendar(false)}
+        selected={[]}
+        onSelect={() => {}}
+      />
 
       <button
-        onClick={() => { setShowForm(v => !v); setEditingMed(null); }}
+        onClick={() => {
+          setShowForm((v) => !v);
+          setEditingMed(null);
+        }}
         className="fixed bottom-6 right-20 bg-brand-600 text-white w-14 h-14 rounded-full shadow-soft text-2xl"
         aria-label="Ajouter un médicament"
       >
